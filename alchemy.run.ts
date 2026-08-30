@@ -172,6 +172,7 @@ const resolveSelfHostAccess = (
   stage: string,
   provision: boolean,
   workersSubdomain: string,
+  customDomain: string,
 ) =>
   Effect.gen(function* () {
     let teamDomain = yield* optionalVar("TEAM_DOMAIN");
@@ -246,7 +247,7 @@ const resolveSelfHostAccess = (
         applicationId: "SelfHostAccess",
         policyName: `open-seo ${stage} self-host users`,
         applicationName: `open-seo ${stage}`,
-        domain: `${workerName(stage)}.${subdomain}`,
+        domain: customDomain || `${workerName(stage)}.${subdomain}`,
         emails: allowedEmails,
       });
       policyAud = application.aud;
@@ -308,6 +309,33 @@ export default Alchemy.Stack(
     );
     const databaseProvider = yield* optionalVar("DATABASE_PROVIDER");
     const workersSubdomain = yield* readWorkersSubdomain({ required: false });
+    const selfHostDomain = yield* optionalVar("SELFHOST_DOMAIN");
+
+    if (selfHostDomain) {
+      let parsed: URL;
+      try {
+        parsed = new URL(`https://${selfHostDomain}`);
+      } catch {
+        return yield* Effect.die(
+          new Error(
+            "SELFHOST_DOMAIN must be a hostname such as seo.example.com.",
+          ),
+        );
+      }
+      if (
+        parsed.hostname !== selfHostDomain ||
+        parsed.pathname !== "/" ||
+        parsed.search ||
+        parsed.hash ||
+        parsed.port
+      ) {
+        return yield* Effect.die(
+          new Error(
+            "SELFHOST_DOMAIN must be a hostname such as seo.example.com.",
+          ),
+        );
+      }
+    }
 
     // Auth needs an absolute BETTER_AUTH_URL. Prod sets it explicitly;
     // previews always derive it from the deterministic worker name — a wrong
@@ -349,12 +377,19 @@ export default Alchemy.Stack(
       stage,
       authMode === "cloudflare_access" && !prod,
       workersSubdomain,
+      selfHostDomain,
     );
 
     const app = yield* Cloudflare.Worker("open-seo", {
       name: workerName(stage),
+      // A self-host custom domain is the sole public entry point. Disable the
+      // workers.dev URL so it cannot bypass the Access application whose AUD
+      // the runtime validates.
+      url: !(selfHostDomain && !prod),
       // Prod serves the real domains; the zone is inferred from the hostname.
-      domain: prod ? ["app.openseo.so", "www.app.openseo.so"] : undefined,
+      domain: prod
+        ? ["app.openseo.so", "www.app.openseo.so"]
+        : selfHostDomain || undefined,
       // Prebuilt worker from `vite build` (@cloudflare/vite-plugin). The entry
       // exports the DO + WorkflowEntrypoint classes (re-exported by
       // src/server.ts), which `bundle: false` requires. Sibling chunks under

@@ -50,6 +50,11 @@ Copy the template and fill in the required values:
 cp .env.selfhost.example .env.selfhost
 ```
 
+To use a custom hostname, set `SELFHOST_DOMAIN` to the hostname only (for
+example, `seo.example.com`). The deploy binds that hostname and disables the
+`workers.dev` URL, so the custom-domain Access application is the only public
+entry point and its audience tag matches the runtime JWT check.
+
 ## 4) Deploy
 
 ```bash

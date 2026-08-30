@@ -28,6 +28,7 @@ import { getPublicOrigin } from "@/server/mcp/public-origin";
 import { handleAuthenticatedOpenSeoMcpRequest } from "@/server/mcp/transport";
 import { resolveHostedContext } from "@/middleware/ensure-user/hosted";
 import { handleMcpApiKeyRequest } from "@/server/mcp/api-key-auth";
+import { handleMcpCloudflareAccessRequest } from "@/server/mcp/cloudflare-access-auth";
 
 const OAUTH_AUTHORIZE_PATH = "/api/auth/oauth2/authorize";
 const OAUTH_TOKEN_PATH = "/api/auth/oauth2/token";
@@ -446,6 +447,13 @@ export function createOpenSeoOAuthProvider(appFetch: AppFetch) {
   return {
     async fetch(request: Request, env: OpenSeoOAuthEnv, ctx: ExecutionContext) {
       const url = new URL(request.url);
+
+      const accessResponse = await handleMcpCloudflareAccessRequest(
+        request,
+        env,
+        ctx,
+      );
+      if (accessResponse) return accessResponse;
 
       const apiKeyResponse = await handleMcpApiKeyRequest(request, env, ctx);
       if (apiKeyResponse) return apiKeyResponse;

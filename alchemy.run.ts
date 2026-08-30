@@ -359,6 +359,11 @@ export default Alchemy.Stack(
           ),
         );
       }
+    } else if (selfHostDomain) {
+      // Managed OAuth publishes resource/authorization metadata from
+      // BETTER_AUTH_URL even in cloudflare_access mode. The custom domain is
+      // the canonical and only public entry point when workers.dev is disabled.
+      authUrl = `https://${selfHostDomain}`;
     } else if (workersSubdomain) {
       authUrl = `https://${workerName(stage)}.${workersSubdomain}`;
     } else if (authMode === "hosted") {

@@ -3,7 +3,7 @@ title: "Install the OpenSEO plugin for Claude Code"
 description: "Add OpenSEO MCP and Agent Skills to Claude Code with one marketplace and one install command."
 ---
 
-The OpenSEO plugin bundles OpenSEO MCP and all nine SEO Agent Skills into one install. This is the preferred way to set up OpenSEO in Claude Code.
+The OpenSEO plugin bundles OpenSEO MCP and all twelve SEO Agent Skills into one install. This is the preferred way to set up OpenSEO in Claude Code.
 
 ## Install
 
@@ -16,17 +16,20 @@ Run these two commands in Claude Code:
 
 If the install summary says `Run /reload-plugins to activate.`, run that command.
 
-Claude Code connects OpenSEO MCP at `https://app.openseo.so/mcp` and enables nine skills:
+Claude Code connects OpenSEO MCP at `https://app.openseo.so/mcp` and enables twelve skills:
 
 - SEO Project Setup
 - SEO Coach
 - SEO Audit
+- AI Visibility Audit
+- AI Prompt Research
 - Keyword Research
 - Keyword Clustering
 - Competitive Landscape
 - Competitor Analysis
 - Local SEO
 - Link Prospecting
+- SEO Report
 
 ## Finish the login
 
@@ -40,6 +43,8 @@ Plugin skills are namespaced by the plugin name:
 /openseo:seo-project-setup
 /openseo:seo-coach
 /openseo:seo-audit
+/openseo:ai-visibility-audit
+/openseo:ai-prompt-research
 /openseo:keyword-research
 /openseo:keyword-clustering
 /openseo:competitive-landscape
@@ -52,14 +57,25 @@ Plugin skills are namespaced by the plugin name:
 
 Claude Desktop doesn't support this plugin format — plugins are a Claude Code feature. For Claude Desktop, [add OpenSEO as an MCP connector](/docs/mcp#claude-desktop) instead.
 
-## Update or remove
+## Update
 
-```bash
+Run inside Claude Code:
+
+```text
 /plugin marketplace update openseo
-/plugin uninstall openseo@openseo
+/plugin update openseo@openseo
+/reload-plugins
 ```
 
 Updates land in the cache immediately, but the running session keeps the old version until you run `/reload-plugins` or restart Claude Code.
+
+For other installation methods, see [Agent setup and skill updates](/docs/agent-setup#update-your-skills).
+
+## Remove
+
+```text
+/plugin uninstall openseo@openseo
+```
 
 ## Troubleshooting
 

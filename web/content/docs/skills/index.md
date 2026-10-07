@@ -5,9 +5,11 @@ description: "Add OpenSEO Agent Skills to Claude Code, Codex, or another AI agen
 
 OpenSEO Agent Skills let you hand repeatable SEO workflows to your AI agent.
 
-Run a slash command when you need keyword research, clustering, competitor analysis, link prospecting, or project setup. The skill gives your agent the workflow instructions.
+Run a slash command when you need keyword research, AI visibility tracking, clustering, competitor analysis, link prospecting, or project setup. The skill gives your agent the workflow instructions.
 
-You stay in charge of strategy. Your agent uses OpenSEO data and the skill instructions to return a recommendation, plan, or shortlist.
+You stay in charge of strategy. Your agent uses OpenSEO data and the skill instructions to research the answer, then saves the result as a report in your project.
+
+No account yet? Try the [free SEO tools](/tools).
 
 ## Set up OpenSEO Agent Skills
 
@@ -25,7 +27,7 @@ MCP connects your agent to OpenSEO data. Skills tell your agent which SEO workfl
 
 ## Audit workflows
 
-- [SEO Audit](/docs/skills/seo-audit): audit a site and get a one-page, plain-language report built around a single next action.
+- [SEO Audit](/docs/skills/seo-audit): audit a site and understand its important problems, worthwhile improvements, and likely effects on traffic and the business.
 
 ## Research workflows
 
@@ -35,9 +37,18 @@ MCP connects your agent to OpenSEO data. Skills tell your agent which SEO workfl
 - [Competitor Analysis](/docs/skills/competitor-analysis): analyze one competitor and turn the research into strategic takeaways.
 - [Local SEO](/docs/skills/local-seo): audit a Google Business Profile, compare it to local competitors, and map Maps visibility around a location.
 
+## AI visibility workflows
+
+- [AI Visibility Audit](/docs/skills/ai-visibility-audit): find the few changes most likely to get your brand mentioned or cited in AI answers.
+- [AI Prompt Research](/docs/skills/ai-prompt-research): find the questions people ask ChatGPT about your market and which sites the answers cite.
+
 ## Promotion workflows
 
 - [Link Prospecting](/docs/skills/link-prospecting): find qualified outreach prospects and the angle that makes each one relevant.
+
+## How the results reach you
+
+- [SEO Report](/docs/skills/seo-report): the shared report-writing skill every workflow above delivers through. Your agent writes one self-contained HTML page and saves it to your project's Reports page, where anyone can read or print it.
 
 ## Learn more about skills
 

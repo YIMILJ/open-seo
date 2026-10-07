@@ -1,3 +1,4 @@
+import { sort } from "remeda";
 import { z } from "zod";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { AuditService } from "@/server/features/audit/services/AuditService";
@@ -8,6 +9,7 @@ import {
   getIssueDescriptor,
   ISSUE_SEVERITY_ORDER,
 } from "@/shared/audit-issues";
+import { PAGE_FETCH_CLASSES } from "@/shared/audit-fetch-class";
 import { mcpResponse } from "@/server/mcp/formatters";
 import { buildProjectMeta } from "@/server/mcp/context";
 import {
@@ -16,6 +18,8 @@ import {
 } from "@/server/mcp/output-schemas";
 import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { projectIdSchema } from "@/server/mcp/schemas";
+import { renderingEstimateText } from "@/shared/audit-rendering";
+import { RENDERED_MAX_AUDIT_PAGES } from "@/shared/audit-limits";
 
 const auditIdSchema = z
   .string()
@@ -53,6 +57,12 @@ const runInputSchema = {
     .max(10_000)
     .optional()
     .describe("Page budget for the crawl (default 50)."),
+  renderJavaScript: z
+    .boolean()
+    .optional()
+    .describe(
+      `Render JavaScript before auditing, for sites whose content or links load client-side or whose bot protection blocks the plain crawler. Slower, and limited to ${RENDERED_MAX_AUDIT_PAGES.toLocaleString("en-US")} pages. On hosted plans: ${renderingEstimateText(100)} Billing counts pages actually rendered. Hosted plans hold the high end until the audit ends; an account that cannot cover it is refused. Default false.`,
+    ),
   runLighthouse: z
     .boolean()
     .optional()
@@ -68,17 +78,19 @@ export const runSiteAuditTool = {
   config: {
     title: "Run site audit",
     description:
-      "Start a site audit: crawls the site (robots.txt-aware, same-origin), checks every page for SEO issues (broken links, duplicate/missing titles and descriptions, redirect chains, orphan pages, canonical problems, thin content, and more), and optionally runs Lighthouse on a sample of pages. Runs in the background — poll get_audit_status, then read get_audit_issues. If the site blocks our crawler, pages are honestly flagged as blocked rather than misreported.",
+      "Start a site audit: crawls the site (robots.txt-aware, same-origin), checks every page for SEO issues (broken links, duplicate/missing titles and descriptions, redirect chains, orphan pages, canonical problems, thin content, and more), and optionally runs Lighthouse on a sample of pages. Runs in the background — poll get_audit_status, then read get_audit_issues. If the site rate limits the crawler it slows down and retries; pages it still cannot read are honestly flagged as blocked or rate-limited rather than misreported.",
     inputSchema: runInputSchema,
     outputSchema: z
       .object({
-        auditId: z.string(),
+        // Expected refusal responses (for example, account audit capacity)
+        // do not start an audit and therefore have no id.
+        auditId: z.string().optional(),
         ...optionalMetaOutputSchema,
       })
       .passthrough(),
     annotations: {
       readOnlyHint: false,
-      openWorldHint: false,
+      openWorldHint: true,
       destructiveHint: false,
     },
   },
@@ -87,9 +99,7 @@ export const runSiteAuditTool = {
     // many-minute wait, which chat agents handle badly. The app UI passes its
     // own explicit lighthouseStrategy, so this default only governs agents.
     const lighthouseStrategy = (args.runLighthouse ?? false) ? "auto" : "none";
-    const limitTier = await AuditService.resolveAuditLimitTier(
-      context.auth.organizationId,
-    );
+    const limitTier = await AuditService.resolveAuditLimitTier(context.billing);
     let auditId: string;
     try {
       ({ auditId } = await AuditService.startAudit({
@@ -100,14 +110,26 @@ export const runSiteAuditTool = {
         maxPages: args.maxPages,
         lighthouseStrategy,
         limitTier,
+        renderJavaScript: args.renderJavaScript,
       }));
     } catch (error) {
-      if (
-        error instanceof AppError &&
-        error.code === "AUDIT_CAPACITY_REACHED"
-      ) {
+      // Expected refusals become readable answers instead of protocol errors:
+      // no audit started, so there is no auditId to report.
+      const refusalText =
+        error instanceof AppError && error.code === "AUDIT_CAPACITY_REACHED"
+          ? "Audit capacity reached for this account — delete old audits in the dashboard to free capacity, then try again."
+          : error instanceof AppError && error.code === "AUDIT_ALREADY_RUNNING"
+            ? "This account is at its limit of concurrently running audits. Poll get_audit_status until one finishes, then try again."
+            : // startAudit refuses only rendering with FORBIDDEN; its message
+              // says why and what to do instead.
+              error instanceof AppError &&
+                error.code === "FORBIDDEN" &&
+                args.renderJavaScript
+              ? error.message
+              : null;
+      if (refusalText) {
         return mcpResponse({
-          text: "Audit capacity reached for this account — delete old audits in the dashboard to free capacity, then try again.",
+          text: refusalText,
           meta: buildProjectMeta(
             context,
             args.projectId,
@@ -253,7 +275,8 @@ export const getAuditIssuesTool = {
       issueType: args.issueType,
     });
     // Severity-first so truncation drops info rows, never critical ones.
-    const rows = unsorted.toSorted(
+    const rows = sort(
+      unsorted,
       (a, b) =>
         ISSUE_SEVERITY_ORDER[a.severity] - ISSUE_SEVERITY_ORDER[b.severity] ||
         a.issueType.localeCompare(b.issueType),
@@ -263,8 +286,8 @@ export const getAuditIssuesTool = {
     for (const row of rows) {
       counts.set(row.issueType, (counts.get(row.issueType) ?? 0) + 1);
     }
-    const summary = Array.from(counts.entries())
-      .map(([issueType, count]) => {
+    const summary = sort(
+      Array.from(counts.entries()).map(([issueType, count]) => {
         const descriptor = getIssueDescriptor(issueType);
         return {
           issueType,
@@ -272,12 +295,11 @@ export const getAuditIssuesTool = {
           severity: descriptor?.severity ?? "info",
           count,
         };
-      })
-      .toSorted(
-        (a, b) =>
-          ISSUE_SEVERITY_ORDER[a.severity] - ISSUE_SEVERITY_ORDER[b.severity] ||
-          b.count - a.count,
-      );
+      }),
+      (a, b) =>
+        ISSUE_SEVERITY_ORDER[a.severity] - ISSUE_SEVERITY_ORDER[b.severity] ||
+        b.count - a.count,
+    );
 
     const limit = args.limit ?? 200;
     const issues = rows.slice(0, limit).map((row) => {
@@ -327,10 +349,10 @@ const pagesInputSchema = {
   projectId: projectIdSchema,
   auditId: auditIdSchema,
   fetchClass: z
-    .enum(["ok", "blocked", "error"])
+    .enum(PAGE_FETCH_CLASSES)
     .optional()
     .describe(
-      'Filter by fetch outcome ("blocked" = the site\'s bot protection challenged the crawler).',
+      'Filter by fetch outcome ("blocked" = the site\'s bot protection challenged the crawler; "rate_limited" = a 429 prevented the crawler from reading the page).',
     ),
   statusCode: z
     .number()

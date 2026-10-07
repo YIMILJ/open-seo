@@ -69,7 +69,9 @@ const inputSchema = {
   hideSpam: z
     .boolean()
     .optional()
-    .describe("Filter out spammy backlinks. Defaults to true."),
+    .describe(
+      "Hide backlinks with Spam scores of 40 or higher. Defaults to true. Unknown scores remain visible. This is a heuristic, not a judgment about a link. Set false to inspect all matching links. True leaves six user filter conditions (two for subfolders); false allows eight (four for subfolders). Each include/exclude term and numeric bound counts separately.",
+    ),
 } as const;
 
 type Args = z.infer<z.ZodObject<typeof inputSchema>>;
@@ -125,15 +127,15 @@ export const getBacklinksProfileTool = {
     description:
       "Returns one bounded page of detailed backlink rows for a domain or page: linking URLs, target URLs, anchors, dofollow/nofollow, authority/spam signals, and lost/broken status. Supports filters, sorting, one_per_domain/as_is mode, and pagination. Charges credits (~30 per page typical). Self-hosted deployments need the Backlinks API enabled on their DataForSEO account.",
     inputSchema,
-    outputSchema: {
+    outputSchema: z.looseObject({
       target: z.string(),
       scope: researchScopeSchema,
       backlinks: backlinksProfileOutputSchema,
       ...optionalMetaOutputSchema,
-    },
+    }),
     annotations: {
       readOnlyHint: false,
-      openWorldHint: false,
+      openWorldHint: true,
       destructiveHint: false,
     },
   },

@@ -1,7 +1,16 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getOnboardingAnswers } from "@/serverFunctions/onboarding";
 
-export const ONBOARDING_LAST_STEP = 3;
+// 0 interests · 1 who for · 2 source · 3 Search Console · 4 agent setup
+export const ONBOARDING_LAST_STEP = 4;
+
+// Option values below are persisted and used by analytics. Change display copy
+// here instead of renaming those values, so historical answers stay comparable.
+export const ONBOARDING_OPTION_LABELS: Readonly<Record<string, string>> = {
+  "AI workflows with Claude or Codex (MCP)": "AI Workflows (MCP + Skills)",
+  "My own startup or business": "My Own Business",
+  "My employer's website": "My Company's Website",
+};
 
 export const INTEREST_OPTIONS = [
   "AI workflows with Claude or Codex (MCP)",
@@ -31,23 +40,17 @@ export const CLIENT_WEBSITE_COUNT_OPTIONS = [
   "25+",
 ] as const;
 
+// Display order. Keep persisted values stable for attribution metrics.
 export const SOURCE_OPTIONS = [
-  "Product Hunt",
   "Google",
-  "Reddit",
   "X / Twitter",
   "GitHub",
-  "AI (Claude, ChatGPT, etc)",
+  "Instagram",
+  "YouTube",
   "Friend or colleague",
-  "Other",
-] as const;
-
-// Keep the mobile list short: these still count as known options, they just
-// aren't shown on small screens.
-export const SOURCE_OPTIONS_HIDDEN_ON_MOBILE = [
-  "Reddit",
-  "X / Twitter",
   "AI (Claude, ChatGPT, etc)",
+  "Product Hunt",
+  "Other",
 ] as const;
 
 /** In-progress form state. Step is tracked separately in the URL. */
@@ -67,7 +70,6 @@ type SavedOnboardingAnswers = {
   workFor: string | null;
   clientWebsiteCount: string | null;
   foundVia: string | null;
-  mcpSetupIntent: string | null;
 };
 
 export const onboardingAnswersQueryOptions = () =>
